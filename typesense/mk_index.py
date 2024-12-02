@@ -128,10 +128,10 @@ XPATHS = {
                     .//tei:quote|
                     .//tei:fw""",
     "date": ".//tei:origin/tei:origDate/@notBefore-iso|.//tei:origin/tei:origDate/text()",
-    "document_type": ".//tei:text/@type"
+    "document_type": "@subtype"
 }
 
-
+""
 def get_context(xpath, page):
     comments = False
     comments_len = 0
@@ -149,20 +149,19 @@ def get_context(xpath, page):
 def get_entities(ent_type, ent_node, ent_name, page, doc):
     entities = []
     e_path = f'.//tei:rs[@type="{ent_type}"]/@ref'
-    for p in page:
-        try:
-            ent = p.xpath(e_path, namespaces={'tei': "http://www.tei-c.org/ns/1.0"})
-        except AttributeError:
-            ent = []
-        ref = [ref.replace("#", "") for e in ent if len(ent) > 0 for ref in e.split()]
-        if len(ref) > 0:
-            for r in ref:
-                p_path = f'.//tei:{ent_node}[@xml:id="{r}"]//tei:{ent_name}[1]'
-                en = doc.any_xpath(p_path)
-                if en:
-                    entity = " ".join(" ".join(en[0].xpath(".//text()")).split())
-                    if len(entity) != 0:
-                        entities.append(entity)
+    try:
+        ent = page.xpath(e_path, namespaces={'tei': "http://www.tei-c.org/ns/1.0"})
+    except AttributeError:
+        ent = []
+    ref = [ref.replace("#", "") for e in ent if len(ent) > 0 for ref in e.split()]
+    if len(ref) > 0:
+        for r in ref:
+            p_path = f'.//tei:{ent_node}[@xml:id="{r}"]//tei:{ent_name}[1]'
+            en = doc.any_xpath(p_path)
+            if en:
+                entity = " ".join(" ".join(en[0].xpath(".//text()")).split())
+                if len(entity) != 0:
+                    entities.append(entity)
     return [ent for ent in sorted(set(entities))]
 
 
@@ -245,6 +244,8 @@ def create_index_records(doc: TeiReader, blacklist: list) -> list:
                 case "page_str":
                     page_record[key] = str(items[0])
                     page_record['page_int'] = int(page_num)
+                case "document_type":
+                    page_record[key] = [items[0]]
             items = extract_structure(doc, value)
             match key:
                 case "id":
@@ -256,8 +257,6 @@ def create_index_records(doc: TeiReader, blacklist: list) -> list:
                 case "date":
                     page_record[key] = items[0]
                     page_record["year"] = int(items[0].split("-")[0])
-                case "document_type":
-                    page_record[key] = items
         # print(page_record)
         page_num += 1
         if len(page_record["full_text"]) > 0:
@@ -290,8 +289,6 @@ def create_index_record(doc: TeiReader, blacklist: list) -> dict:
                 record[key] = [extract_text(place, blacklist) for place in items]
             case "places":
                 record[key] = [extract_text(place, blacklist) for place in items]
-            case "edition":
-                record[key] = [extract_text(edition, blacklist) for edition in items]
             case _:
                 record[key] = " ".join([extract_text(text, blacklist) for text in items])
     return record
@@ -300,6 +297,7 @@ def create_index_record(doc: TeiReader, blacklist: list) -> dict:
 def process_fils(files: str, blacklist: list, paginate: bool) -> list:
     records = []
     for file in tqdm(files, total=len(files)):
+        print(file)
         doc = TeiReader(file)
         if paginate:
             rec_lists = create_index_records(doc, blacklist)
@@ -313,7 +311,7 @@ def process_fils(files: str, blacklist: list, paginate: bool) -> list:
 if __name__ == "__main__":
     debug = False
     paginate = True
-    cfts = True
+    cfts = False
     data_dir = DATA_DIR
     records, counter = process_fils(load_xml_files(data_dir), BLACKLIST, paginate)
     if cfts:
