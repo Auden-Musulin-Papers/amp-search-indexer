@@ -311,7 +311,7 @@ def process_fils(files: str, blacklist: list, paginate: bool) -> list:
 if __name__ == "__main__":
     debug = False
     paginate = True
-    cfts = False
+    cfts = True
     data_dir = DATA_DIR
     records, counter = process_fils(load_xml_files(data_dir), BLACKLIST, paginate)
     if cfts:
